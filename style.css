@@ -1,0 +1,29 @@
+#app {
+    min-width: 50%;
+    text-align: center;
+    margin: 20px;
+}
+
+table {
+    margin: 30px auto;
+    border-collapse: collapse;
+    width: 60%;
+    text-align: center;
+}
+
+th,
+td {
+    padding: 10px;
+}
+
+table,
+tr,
+th,
+td {
+    border: 1px solid #000;
+}
+
+#loading {
+    margin: auto;
+    display: none;
+}
