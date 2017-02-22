@@ -27,3 +27,30 @@ td {
     margin: auto;
     display: none;
 }
+
+#definitions {
+
+    padding: 30px;
+    border: 1px solid black;
+    background: white;
+    height: 80%;
+    width: 80%;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+    border-radius: 10px;
+    box-shadow: 10px 10px 10px;
+    overflow-y: scroll;
+}
+
+.defParas {
+    width: 80;
+    margin: auto;
+}
+
+#closeDiv {
+    cursor: pointer;
+    float: right;
+}

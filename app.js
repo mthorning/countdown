@@ -1,13 +1,14 @@
 //DATA CONTROLLER
 let dataController = (function() {
-    
+
+    //array of permutations
+    let permutations = [];
+
+    //word table 
+    let wordTable = [];
+
     //typo object
     const spell = new Typo("en_US", false, false, { dictionaryPath: "typo/dictionaries" });    
-
-    //function for checking if each permutation is a word
-    let isWord = function(word) {
-        return spell.check(word);
-    }
 
     //Dictionary API
     let dictionary = {
@@ -17,22 +18,26 @@ let dataController = (function() {
             let request = new XMLHttpRequest();
             let data;
 
-            request.open('GET', 'https://owlbot.info/api/v1/dictionary/' + word, false);
+            request.open('GET', 'https://owlbot.info/api/v1/dictionary/' + word, true);
 
-            request.setRequestHeader('content-type', 'application/json');
+            //request.setRequestHeader('content-type', 'application/json');
             
-            return request.onload = function() {
+            request.onload = function() {
                 if(request.status >= 200 && request.status < 400) {
+
                     //success!
                     data = JSON.parse(request.responseText);
-                    console.log(data);
-                    return data;
+                    handler(true, word, data);
+
                 } else {
+
+                    //fail
                     console.log('Server returned an error: ' + request.status);
+                    handler(false)
                 }
             }
 
-            return request.onerror = function() {
+            request.onerror = function() {
                 console.log('There was an error connecting to the server');
             }
 
@@ -47,9 +52,26 @@ let dataController = (function() {
 
     }
 
+     //ajax handler
+    function handler(success, word, data) {
+        if(success) {
+            wordTable.forEach(obj => {
+                if(obj.name === word) {
+                    data.forEach(el => {
+                        obj.types.push(el.type);
+                        obj.definitions.push(el.defenition);
+                    });
+                }
+            });
+
+        } else {
+            console.log('no definition');
+        }
+    }
+
     //function which creates all permutations
-    let permutator = function(input) {
-        let permArr = [],
+    function permutate(input) {
+
         usedChars = [],
         origLength = input.length,
         count = 0;
@@ -62,71 +84,51 @@ let dataController = (function() {
                     let ch = input.splice(i, 1)[0];
                     usedChars.push(ch);
                     if (input.length === 0) {
-                        permArr.push(usedChars.slice());
+                        permutations.push(usedChars.slice());
                     }
                     main();
                     input.splice(i, 0, ch);
                     usedChars.pop();
             }
-            return permArr; //array of all permutations
         })();
-    }
-
-    let findWords = function(inputArr) {
-
-        //object constructor for words and their definitions
-        function DefinedWord(word, definition) {
-            this.word = word;
-            this.definition = definition;
-        }
-
-        //call function to get array of permutations
-        let permutations = permutator(inputArr),
-        definedWords = [],
-        words = [],
-        foundCount = 0,
-        dec = permutations[0].length;
-
-        while(dec > 3) {
-            //cylcle through permutations and check for words 
-            permutations.forEach(permutation => {
-                let word = permutation.slice(0, dec).join('');
-
-                //first check it is in root dictionary and unique
-                if(isWord(word) && words.indexOf(word) === -1) {
-                    words.push(word);
-
-                    //check dictionary API
-                    let wordData = dictionary.getDef(word);
-                    console.log(wordData);
-                    /*
-                        //add new word/definition object to array
-                        definedWords.push(new DefinedWord(word, def));
-                        foundCount++;
-                        if(foundCount === 5) {
-                            return definedWords;
-                        }
-                    }*/
-                }
-            });
-
-            dec--;
-        }
-
-        return definedWords;
     }
 
     //PUBLIC FUNCTIONS
     return {
 
-        //start word gathering process
-        getWords(input) {
-            let splitInput = input.split('');
-            return findWords(splitInput);
+        makePermutations: function(array) {
+            permutations = [];
+            permutate(array);
         },
 
-        getDictionary: function(word) {
+        getPermutations: function() {
+            return permutations;
+        },
+
+        //function for checking if each permutation is a word
+        isWord: function(word) {
+            return spell.check(word);
+        },
+
+        resetWordTable: function() {
+            wordTable = [];
+        },
+
+        addWord: function(word) {
+            wordTable.push({name: word, types: [], definitions: []});
+        },
+
+        //temporary dev function
+        getWords: function() {
+            return wordTable;
+        },
+
+        searchDictionary: function(word) {
             dictionary.makeRequest(word);
+        },
+
+        getWordRow: function(word) {
+            return wordTable.find(obj => obj.name === word);
         }
 
     }
@@ -143,7 +145,11 @@ let uiController = (function() {
         submit: document.querySelector('#submitButton'),
         loading: document.querySelector('#loading'),
         loadingSpan: document.querySelector('#wordsToFind'),
-        progressBar: document.querySelector('progress')
+        progressBar: document.querySelector('progress'),
+        definitions: document.querySelector('#definitions'),
+        defsTitle: document.querySelector('#defs_word'),
+        defs: document.querySelector('#defs'),
+        defClose: document.querySelector('#closeDiv')
     };
 
     //PUBLIC FUNCTIONS
@@ -165,15 +171,16 @@ let uiController = (function() {
         display: function(wordsPlusDefs) {
             let html;
             if(wordsPlusDefs.length > 0) {
-                html ='<table><tr><th>Word</th><th>Definition</th></tr>';
+                html ='<table>';
                 wordsPlusDefs.forEach(wordDef => {
-                    html += `<tr><td>${wordDef.word}</td><td>${wordDef.definition}</td></tr>`;
+                    html += `<tr><td>${wordDef.name}</td><td><button class="showDef" value="${wordDef.name}">Show Definition</button></td></tr>`;
                 })
                 html +='</table>';
             } else {
                 html = '<p>No words found this time <img src="img/unhappy.png" height="20"</p>'
             }
             elements.loading.style.display = 'none';
+            elements.progressBar.value = 0;
             elements.output.innerHTML = html;
             elements.input.focus();
         },
@@ -191,6 +198,30 @@ let uiController = (function() {
             elements.loadingSpan.innerHTML = letters;
             elements.loading.style.display = 'block';
         },
+
+        incProgBar: function() {
+            elements.progressBar.value += 1;
+        },
+
+        displayDefinitions: function(data) {
+
+            let textBody = '';
+
+            elements.defsTitle.textContent = data.name;
+
+            if(data.definitions.length > 0) {
+                data.definitions.forEach((def, i) => {
+                    textBody += `<br /><p class="defParas"><strong>${data.types[i]}</strong>  - ${def}</p><br /><hr />`;
+                });
+            } else {
+                textBody = '<br /><p>No definition found for this word.</p>'
+            }
+
+            elements.defs.innerHTML = textBody;
+
+            //show div
+            elements.definitions.style.display = 'block';
+        }
     }
 
 })();
@@ -199,7 +230,7 @@ let uiController = (function() {
 let controller = (function(data, ui) {
 
 
-    let setUpEventListeners = function() {
+    function setUpEventListeners() {
 
         //get DOM variables
         const DOM = ui.getDOM();
@@ -212,11 +243,55 @@ let controller = (function(data, ui) {
                 submission();
             }
         });
+
+        DOM.output.addEventListener('click', function(e) {
+            if(e.target.className === 'showDef') {
+                showDefinitions(e.target.value);
+            }
+        });
+
+        DOM.defClose.addEventListener('click', function() {
+            DOM.definitions.style.display = 'none';
+        })
+    }
+
+    function showDefinitions(buttonValue) {
+
+        //look up word in table
+        let row = data.getWordRow(buttonValue);
+
+        console.log(row);
+
+        //display
+        ui.displayDefinitions(row);
+
+    }
+
+    function findWords() {
+
+        let foundCount = 0,
+        foundWords = [];
+        dec = data.getPermutations()[0].length;
+
+        data.resetWordTable();
+
+        while(dec > 3) {
+            //cylcle through permutations and check for words 
+            data.getPermutations().forEach(permutation => {
+                let word = permutation.slice(0, dec).join('');
+
+                //check it is in root dictionary and unique
+                if(data.isWord(word) && foundWords.indexOf(word) === -1) {
+                    foundWords.push(word);
+                    data.addWord(word);
+                }
+            });
+            dec--;
+        }
     }
 
     //function called when submit button pressed
     let submission = function() {
-        let wordsToDisplay;
 
         //get letters from UI
         let submission = ui.getSubmission();
@@ -224,17 +299,38 @@ let controller = (function(data, ui) {
         //show loading screen
         ui.loadingScreen(submission);
 
+        ui.incProgBar();
+
         //function delayed to allow loading screen time to display
         setTimeout(function() {
 
-            //call permutation functions
-            wordsToDisplay = data.getWords(submission); 
+            //call permutation function
+            data.makePermutations(submission.split('')),
+            ui.incProgBar();
 
-            //display results
-            ui.display(wordsToDisplay);
-        }, 500);
+            setTimeout(function() {
+                //cycle through permutations to find words
+                findWords();
+                ui.incProgBar();
+                setTimeout(function() {
+                    //cycle through word table and add definitions
+                    data.getWords().forEach(word => {
+                        data.searchDictionary(word.name);
+                    });
+                    ui.incProgBar();
+                    setTimeout(function() {
+                        //display results
+                        ui.display(data.getWords());
+                    }, 100);
+                }, 100);
+                
+            }, 100);
+        }, 100);
 
     }
+
+    
+    
 
     return {
 
