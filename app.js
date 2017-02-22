@@ -19,8 +19,6 @@ let dataController = (function() {
             let data;
 
             request.open('GET', 'https://owlbot.info/api/v1/dictionary/' + word, true);
-
-            //request.setRequestHeader('content-type', 'application/json');
             
             request.onload = function() {
                 if(request.status >= 200 && request.status < 400) {
@@ -33,7 +31,7 @@ let dataController = (function() {
 
                     //fail
                     console.log('Server returned an error: ' + request.status);
-                    handler(false)
+                    handler(false);
                 }
             }
 
