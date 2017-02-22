@@ -152,6 +152,12 @@ let uiController = (function() {
         defClose: document.querySelector('#closeDiv')
     };
 
+    function makeNice(word) {
+        word = word.split('');
+        word[0] = word[0].toUpperCase();
+        return word.join('');
+    }
+
     //PUBLIC FUNCTIONS
     return {
 
@@ -164,7 +170,11 @@ let uiController = (function() {
         getSubmission: function() {
             let input = elements.input.value;
             elements.input.value = '';
-            return input;
+            return input;    
+        },
+
+        notEnoughLetters: function() {
+            alert('Please enter between 4 and 9 letters');
         },
 
         //display results in a table
@@ -173,7 +183,7 @@ let uiController = (function() {
             if(wordsPlusDefs.length > 0) {
                 html ='<table>';
                 wordsPlusDefs.forEach(wordDef => {
-                    html += `<tr><td>${wordDef.name}</td><td><button class="showDef" value="${wordDef.name}">Show Definition</button></td></tr>`;
+                    html += `<tr><td>${makeNice(wordDef.name)}</td><td><button class="showDef" value="${wordDef.name}">Show Definition</button></td></tr>`;
                 })
                 html +='</table>';
             } else {
@@ -207,7 +217,7 @@ let uiController = (function() {
 
             let textBody = '';
 
-            elements.defsTitle.textContent = data.name;
+            elements.defsTitle.textContent = makeNice(data.name);
 
             if(data.definitions.length > 0) {
                 data.definitions.forEach((def, i) => {
@@ -294,39 +304,43 @@ let controller = (function(data, ui) {
     let submission = function() {
 
         //get letters from UI
-        let submission = ui.getSubmission();
+        let submission = ui.getSubmission().toLowerCase();
 
-        //show loading screen
-        ui.loadingScreen(submission);
+        if(submission.length < 4) {
+            ui.notEnoughLetters();
+        } else {
 
-        ui.incProgBar();
+           //show loading screen
+            ui.loadingScreen(submission);
 
-        //function delayed to allow loading screen time to display
-        setTimeout(function() {
-
-            //call permutation function
-            data.makePermutations(submission.split('')),
             ui.incProgBar();
 
+            //function delayed to allow loading screen time to display
             setTimeout(function() {
-                //cycle through permutations to find words
-                findWords();
+
+                //call permutation function
+                data.makePermutations(submission.split('')),
                 ui.incProgBar();
+
                 setTimeout(function() {
-                    //cycle through word table and add definitions
-                    data.getWords().forEach(word => {
-                        data.searchDictionary(word.name);
-                    });
+                    //cycle through permutations to find words
+                    findWords();
                     ui.incProgBar();
                     setTimeout(function() {
-                        //display results
-                        ui.display(data.getWords());
+                        //cycle through word table and add definitions
+                        data.getWords().forEach(word => {
+                            data.searchDictionary(word.name);
+                        });
+                        ui.incProgBar();
+                        setTimeout(function() {
+                            //display results
+                            ui.display(data.getWords());
+                        }, 100);
                     }, 100);
+                    
                 }, 100);
-                
-            }, 100);
-        }, 100);
-
+            }, 100); 
+        }
     }
 
     
