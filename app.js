@@ -1,11 +1,14 @@
 //DATA CONTROLLER
 let dataController = (function() {
 
-    //array of permutations
-    let permutations = [];
+    //array of combinations
+    let combinations = [];
 
     //word table 
     let wordTable = [];
+
+    //sum table 
+    let sumTable = [];
 
     //typo object
     const spell = new Typo("en_US", false, false, { dictionaryPath: "typo/dictionaries" });    
@@ -67,8 +70,8 @@ let dataController = (function() {
         }
     }
 
-    //function which creates all permutations
-    function permutate(input) {
+    //function which creates all combinations
+    function combinate(input) {
 
         usedChars = [],
         origLength = input.length,
@@ -82,7 +85,7 @@ let dataController = (function() {
                     let ch = input.splice(i, 1)[0];
                     usedChars.push(ch);
                     if (input.length === 0) {
-                        permutations.push(usedChars.slice());
+                        combinations.push(usedChars.slice());
                     }
                     main();
                     input.splice(i, 0, ch);
@@ -94,16 +97,16 @@ let dataController = (function() {
     //PUBLIC FUNCTIONS
     return {
 
-        makePermutations: function(array) {
-            permutations = [];
-            permutate(array);
+        makecombinations: function(array) {
+            combinations = [];
+            combinate(array);
         },
 
-        getPermutations: function() {
-            return permutations;
+        getcombinations: function() {
+            return combinations;
         },
 
-        //function for checking if each permutation is a word
+        //function for checking if each combination is a word
         isWord: function(word) {
             return spell.check(word);
         },
@@ -138,9 +141,9 @@ let uiController = (function() {
 
     //assignation of DOM elements to variable names
     const elements = {
-        input: document.querySelector('#inputLetters'),
+        wordInput: document.querySelector('#inputLetters'),
         output: document.querySelector('#resultDiv'),
-        submit: document.querySelector('#submitButton'),
+        wordSubmit: document.querySelector('#submitLetters'),
         loading: document.querySelector('#loading'),
         loadingSpan: document.querySelector('#wordsToFind'),
         progressBar: document.querySelector('progress'),
@@ -165,9 +168,9 @@ let uiController = (function() {
         },
 
         //get letters from the input box
-        getSubmission: function() {
-            let input = elements.input.value;
-            elements.input.value = '';
+        getSubmission: function(game) {
+            let input = elements[game + 'Input'].value;
+            elements[game + 'Input'].value = '';
             return input;    
         },
 
@@ -175,8 +178,8 @@ let uiController = (function() {
             alert('Please enter between 4 and 9 letters');
         },
 
-        //display results in a table
-        display: function(wordsPlusDefs) {
+        //display word results in a table
+        displayWords: function(wordsPlusDefs) {
             let html;
             if(wordsPlusDefs.length > 0) {
                 html ='<table>';
@@ -190,13 +193,13 @@ let uiController = (function() {
             elements.loading.style.display = 'none';
             elements.progressBar.value = 0;
             elements.output.innerHTML = html;
-            elements.input.focus();
+            elements.wordInput.focus();
         },
 
         //clear screen to starting display
-        resetScreen: function() {
+        resetScreen: function(game) {
             elements.output.innerHTML = '';
-            elements.input.focus();
+            elements.wordInput.focus();
             elements.progressBar.value = 0;
         },
 
@@ -244,13 +247,19 @@ let controller = (function(data, ui) {
         const DOM = ui.getDOM();
 
         //event listeners
-        DOM.submit.addEventListener('click', submission);
-
-        document.addEventListener('keypress', function(event){
-            if(event.keyCode === 13 || event.which === 13) {
-                submission();
-            }
+        DOM.wordSubmit.addEventListener('click', function() {
+            submission('word');
         });
+
+       /* document.addEventListener('keypress', function(event){
+            if(event.keyCode === 13 || event.which === 13) {
+                if(DOM.wordInput.hasFocus()) {
+                    sumbmission('word');
+                } else if(DOM.numberInput.hasFocus()) {
+                    submission('number');
+                }
+            }
+        }); */
 
         DOM.output.addEventListener('click', function(e) {
             if(e.target.className === 'showDef') {
@@ -268,8 +277,6 @@ let controller = (function(data, ui) {
         //look up word in table
         let row = data.getWordRow(buttonValue);
 
-        console.log(row);
-
         //display
         ui.displayDefinitions(row);
 
@@ -279,14 +286,14 @@ let controller = (function(data, ui) {
 
         let foundCount = 0,
         foundWords = [];
-        dec = data.getPermutations()[0].length;
+        dec = data.getcombinations()[0].length;
 
         data.resetWordTable();
 
         while(dec > 3) {
-            //cylcle through permutations and check for words 
-            data.getPermutations().forEach(permutation => {
-                let word = permutation.slice(0, dec).join('');
+            //cylcle through combinations and check for words 
+            data.getcombinations().forEach(combination => {
+                let word = combination.slice(0, dec).join('');
 
                 //check it is in root dictionary and unique
                 if(data.isWord(word) && foundWords.indexOf(word) === -1) {
@@ -299,45 +306,49 @@ let controller = (function(data, ui) {
     }
 
     //function called when submit button pressed
-    let submission = function() {
+    let submission = function(game) {
 
         //get letters from UI
-        let submission = ui.getSubmission().toLowerCase();
+        let submission = ui.getSubmission(game).toLowerCase();
 
-        if(submission.length < 4) {
-            ui.notEnoughLetters();
-        } else {
+        if(game === 'word') {
+            if(submission.length < 4) {
+                ui.notEnoughLetters();
+            } else {
 
-           //show loading screen
-            ui.loadingScreen(submission);
+               //show loading screen
+                ui.loadingScreen(submission);
 
-            ui.incProgBar();
-
-            //function delayed to allow loading screen time to display
-            setTimeout(function() {
-
-                //call permutation function
-                data.makePermutations(submission.split('')),
                 ui.incProgBar();
 
+                //function delayed to allow loading screen time to display
                 setTimeout(function() {
-                    //cycle through permutations to find words
-                    findWords();
+
+                    //call combination function
+                    data.makecombinations(submission.split(''));
                     ui.incProgBar();
+
                     setTimeout(function() {
-                        //cycle through word table and add definitions
-                        data.getWords().forEach(word => {
-                            data.searchDictionary(word.name);
-                        });
+                        //cycle through combinations to find words
+                        findWords();
                         ui.incProgBar();
                         setTimeout(function() {
-                            //display results
-                            ui.display(data.getWords());
+                            //cycle through word table and add definitions
+                            data.getWords().forEach(word => {
+                                data.searchDictionary(word.name);
+                            });
+                            ui.incProgBar();
+                            setTimeout(function() {
+                                //display results
+                                ui.displayWords(data.getWords());
+                            }, 100);
                         }, 100);
+                        
                     }, 100);
-                    
-                }, 100);
-            }, 100); 
+                }, 100); 
+            }
+        } else {
+            // run code for numbers game
         }
     }
 
@@ -349,6 +360,35 @@ let controller = (function(data, ui) {
         init: function() {
             setUpEventListeners();
             ui.resetScreen();
+        },
+
+        numberTest: function(target) {
+            data.makecombinations([100, 75, 50, 3, 5, 8]);
+
+            let numbs = data.getcombinations(),
+            found;
+
+            while(!found) {
+                numbs.forEach(numbSet => {
+                    let sum = `${numbSet[0]} ${rand()} ${numbSet[1]} ${rand()} ${numbSet[2]} ${rand()} ${numbSet[3]} ${rand()} ${numbSet[4]} ${rand()} ${numbSet[5]}`;
+
+                    for(let i = 3; i < 12; i += 2) {
+                        let sumToTest = sum.split(' ').slice(0, i).join(' ');
+                        if(eval(sumToTest) === target) {
+                            console.log(sumToTest + ' = ' + eval(sumToTest));
+                            found = true;
+                        };
+                    }
+                });
+            }
+
+            function rand() {
+                let ops = ['+', '-', '*', '/'];
+
+                let r = Math.round(Math.random() * 3);
+
+                return ops[r];
+            }
         }
     }
 
@@ -357,3 +397,4 @@ let controller = (function(data, ui) {
 })(dataController, uiController);
 
 controller.init();
+//controller.numberTest();
